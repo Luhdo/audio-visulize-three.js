@@ -92,11 +92,28 @@ document.addEventListener("mousemove", (e) => {
 // EVERYTHING #f00
 /** @type {HTMLInputElement} */
 const file = document.getElementById("fileUpload");
-const cube = new THREE.Mesh(
-  new THREE.BoxGeometry(1, 1, 1),
+let sphereData = {
+  radius: 1,
+  widthSegments: 32,
+  heightSegments: 32,
+  phiStart: 0,
+  phiLength: 2 * Math.PI,
+  thetaStart: 0,
+  thetaLength: Math.PI,
+};
+const obj = new THREE.Mesh(
+  new THREE.SphereGeometry(
+    sphereData.radius,
+    sphereData.widthSegments,
+    sphereData.heightSegments,
+    sphereData.phiStart,
+    sphereData.phiLength,
+    sphereData.thetaStart,
+    sphereData.thetaLength
+  ),
   new THREE.MeshNormalMaterial()
 );
-scene.add(cube);
+scene.add(obj);
 
 import * as dat from "dat.gui";
 (() => {
@@ -116,9 +133,17 @@ import * as dat from "dat.gui";
   shader.add(params, "bloomRadius", 0.0, 2.0, 0.01).onChange(function (value) {
     bloomPass.radius = Number(value);
   });
+
+  const obF = Gui.addFolder("object");
+  obF.add(sphereData, "radius", 0.1, 2, 0.01).onChange(function (value) {
+    obj.scale(value, 1);
+  });
 })();
 
-let audioSourse, analyser;
+/** @type {MediaElementAudioSourceNode | undefined} */
+let audioSourse;
+/** @type {AnalyserNode | undefined} */
+let analyser;
 file.addEventListener("change", function (e) {
   const files = this.files;
   const audioElemet = document.createElement("audio");
@@ -150,17 +175,16 @@ file.addEventListener("change", function (e) {
     camera.rotation.x += (cameraRotationProxyY - camera.rotation.x) / 15;
 
     analyser?.getByteFrequencyData(dataArray);
-    bloomPass.strength = dataArray.slice(-5)[0] / 255;
     const radius =
       dataArray.map((d, i) => d * i).reduce((a, b) => a + b) /
-        (200 * bufferLength) +
-      0.5;
-    bloomPass.radius = radius;
+      (200 * bufferLength);
+    bloomPass.radius = dataArray.slice(-5)[0] / 255;
+    bloomPass.strength = radius;
     console.log(radius);
     console.log(dataArray);
 
-    cube.rotation.y += 0.005;
-    cube.rotation.x += 0.005;
+    obj.rotation.y += 0.005;
+    obj.rotation.x += 0.005;
 
     composer.render();
 
